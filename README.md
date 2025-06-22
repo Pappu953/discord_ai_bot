@@ -21,7 +21,7 @@ A powerful Discord bot powered by Hugging Face models. It supports AI text chatt
 
 1. Clone this repo
 
-    git clone https://github.com/yourusername/discord-ai-bot.git
+    git clone https://github.com/Pappu953/discord_ai_bot.git
     cd discord-ai-bot
 
 2. Install dependencies
