@@ -1,5 +1,5 @@
 discord.py
 python-dotenv
 huggingface_hub
-pillow
 Flask
+Pillow
