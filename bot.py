@@ -1,23 +1,36 @@
 import os
-import re
-import threading
 import discord
-from discord.ext import commands
 from discord import app_commands
-from dotenv import load_dotenv
+from discord.ext import commands
 from huggingface_hub import InferenceClient
+from dotenv import load_dotenv
+import asyncio
+import re
 from flask import Flask
-from io import BytesIO
-from PIL import Image
+from threading import Thread
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    app.run(host="0.0.0.0", port=8080)
+
+# Start the Flask server in a separate thread
+Thread(target=run_flask).start()
 
 # Load environment variables
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 HF_TOKEN = os.getenv("HF_TOKEN")
 
-# Hugging Face clients
-chat_client = InferenceClient(provider="fireworks-ai", api_key=HF_TOKEN)
-image_client = InferenceClient(provider="nebius", api_key=HF_TOKEN)
+if not DISCORD_TOKEN or not HF_TOKEN:
+    raise EnvironmentError("DISCORD_TOKEN or HF_TOKEN not set in environment variables.")
+
+# Hugging Face Client
+hf_client = InferenceClient(token=HF_TOKEN)
 
 # Discord bot setup
 intents = discord.Intents.default()
@@ -25,68 +38,58 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
-# Autocomplete suggestions
-style_suggestions = [
-    "anime", "cyberpunk", "realistic", "pixel art", "steampunk",
-    "sci-fi", "fantasy", "vaporwave", "low poly", "concept art"
-]
-
-async def autocomplete_prompt(interaction: discord.Interaction, current: str):
-    return [
-        app_commands.Choice(name=style, value=style)
-        for style in style_suggestions if current.lower() in style.lower()
-    ][:5]
-
 @bot.event
 async def on_ready():
+    print(f"✅ Logged in as {bot.user}")
     try:
         synced = await tree.sync()
-        print(f"✅ Synced {len(synced)} slash commands globally.")
+        print(f"✅ Synced {len(synced)} command(s).")
     except Exception as e:
-        print(f"❌ Failed to sync commands: {e}")
-    print(f"🤖 {bot.user} is now online!")
+        print(f"❌ Sync failed: {e}")
 
-@tree.command(name="chat", description="Talk to the AI chatbot")
-@app_commands.describe(prompt="Your message to the AI")
+@tree.command(name="chat", description="Talk with AI using Hugging Face chat model.")
+@app_commands.describe(prompt="What do you want to say?")
 async def chat_command(interaction: discord.Interaction, prompt: str):
-    await interaction.response.defer(thinking=True)
+    await interaction.response.defer()
     try:
-        completion = chat_client.chat.completions.create(
-            model="deepseek-ai/DeepSeek-R1-0528",
+        result = hf_client.chat_completion(
+            model="MiniMaxAI/MiniMax-M1-80k",
             messages=[{"role": "user", "content": prompt}]
         )
-        raw_reply = completion.choices[0].message["content"]
-        cleaned_reply = re.sub(r"<think>.*?</think>", "", raw_reply, flags=re.DOTALL).strip()
-        await interaction.followup.send(cleaned_reply or "🤖 (No response)")
-    except Exception as e:
-        await interaction.followup.send(f"❌ Error: {str(e)}")
+        message = result.choices[0].message["content"]
 
-@tree.command(name="draw", description="Generate an AI image from a prompt")
-@app_commands.describe(prompt="Describe the image you want")
-@app_commands.autocomplete(prompt=autocomplete_prompt)
+        # Remove <think>...</think> blocks
+        cleaned_message = re.sub(r"<think>.*?</think>", "", message, flags=re.DOTALL).strip()
+
+        if len(cleaned_message) > 2000:
+            cleaned_message = cleaned_message[:1997] + "..."
+
+        await interaction.followup.send(cleaned_message)
+
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error generating chat: {e}")
+
+@tree.command(name="draw", description="Generate image from prompt using HF")
+@app_commands.describe(prompt="Describe the image you want to generate")
 async def draw_command(interaction: discord.Interaction, prompt: str):
-    await interaction.response.defer(thinking=True)
+    await interaction.response.defer()
     try:
-        image = image_client.text_to_image(prompt, model="black-forest-labs/FLUX.1-dev")
-        image_bytes = BytesIO()
-        image.save(image_bytes, format="PNG")
-        image_bytes.seek(0)
-        await interaction.followup.send(file=discord.File(fp=image_bytes, filename="generated.png"))
+        def generate_image():
+            return hf_client.text_to_image(
+                prompt,
+                model="black-forest-labs/FLUX.1-dev"
+            )
+
+        image = await asyncio.to_thread(generate_image)
+        path = "output.png"
+        image.save(path)
+
+        with open(path, "rb") as f:
+            await interaction.followup.send(file=discord.File(f))
+
+        os.remove(path)
+
     except Exception as e:
-        await interaction.followup.send(f"❌ Error: {str(e)}")
+        await interaction.followup.send(f"❌ Error generating image: {e}")
 
-# Flask web app for Render's port binding
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "🤖 Discord AI Bot is running!"
-
-def run_flask():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
-
-# Run Flask and Bot concurrently
-if __name__ == "__main__":
-    threading.Thread(target=run_flask).start()
-    bot.run(DISCORD_TOKEN)
+bot.run(DISCORD_TOKEN)
