@@ -1,97 +1,71 @@
-🤖 Discord AI Chatbot & Image Generator
 
-A powerful Discord bot powered by Hugging Face models. It supports AI text chatting and image generation via slash commands.
+📘 Discord AI Bot using Hugging Face & Flask
 
-🚀 Features
+This is a Discord bot powered by Hugging Face for AI chat and image generation, with a Flask server to keep the bot alive (useful for platforms like Replit, Railway, UptimeRobot, etc.).
 
-- 💬 /chat – Ask anything, get AI answers using DeepSeek R1 model
-- 🎨 /draw – Generate stunning AI images from text prompts
-- 🔍 Autocomplete suggestions in /draw (e.g., "anime", "cyberpunk")
-- 🧹 Cleans out <think> and hidden system notes from AI responses
-- 🌐 Easy deployment on Render
+✨ Features
+- 🤖 Chat with AI using MiniMaxAI/MiniMax-M1-80k
+- 🎨 Generate AI images using black-forest-labs/FLUX.1-dev
+- 🌐 Flask web server for uptime pings
+- ✅ Easy deployment and environment management
 
-🧪 Models Used
+📦 Requirements
 
-| Feature     | Model Name                                 | Provider       |
-|-------------|---------------------------------------------|----------------|
-| Text Chat   | deepseek-ai/DeepSeek-R1-0528               | Fireworks      |
-| Image Gen   | black-forest-labs/FLUX.1-dev               | Nebius         |
+Install dependencies:
+pip install -r requirements.txt
 
-🛠 Setup Instructions (Local or Render)
+📄 requirements.txt
+Create a file named requirements.txt with:
+discord.py
+huggingface_hub
+flask
+python-dotenv
 
-1. Clone this repo
+🔐 Environment Variables
 
-    git clone https://github.com/Pappu953/discord_ai_bot.git
-    cd discord-ai-bot
+Create a .env file in the root of your project with the following:
+DISCORD_TOKEN=your_discord_bot_token
+HF_TOKEN=your_huggingface_api_token
 
-2. Install dependencies
+🚀 How to Run
+python bot.py
 
-    pip install -r requirements.txt
+If everything is set up correctly, you should see:
+✅ Logged in as YourBotName
+✅ Synced 2 command(s).
+ * Running on http://0.0.0.0:8080
 
-3. Create .env file
+💬 Chat Command
+Interact with the AI:
+/chat prompt: Hello, how are you?
 
-    DISCORD_TOKEN=your_discord_bot_token_here
-    HF_TOKEN=your_huggingface_read_token_here
+Response will be trimmed to max 2000 characters and cleaned of <think> metadata.
 
-4. Run the bot
+🖼️ Draw Command
+Generate an image from your prompt:
+/draw prompt: Astronaut riding a unicorn
 
-    python bot.py
+Bot will reply with the generated image.
 
-🌐 Deploy to Render (FREE)
+🔁 Keeping Bot Alive (Optional)
+To keep your bot alive (e.g., on Replit or UptimeRobot):
 
-1. Push this repo to GitHub.
-2. Go to https://render.com and click New > Background Worker.
-3. Connect your GitHub repo.
-4. Use these Render settings:
+- The bot includes a Flask web server at http://your-server:8080/
+- Use a service like UptimeRobot to ping the endpoint every 5 minutes.
 
-| Setting           | Value                               |
-|-------------------|-------------------------------------|
-| Environment       | Python                              |
-| Build Command     | pip install -r requirements.txt     |
-| Start Command     | python bot.py                       |
-| Instance Type     | Starter (Free) or higher            |
+🛠️ Project Structure
+discord_ai_bot/
+│
+├── bot.py
+├── .env
+└── requirements.txt
 
-5. Go to Environment > Add Environment Variables and set:
+🧠 Powered by
+- Hugging Face Inference API
+- Discord API (slash commands)
+- Flask (for uptime pings)
 
-    DISCORD_TOKEN=your_discord_bot_token
-    HF_TOKEN=your_huggingface_read_token
-
-6. Click Deploy. You're done!
-
-✨ Slash Command Examples
-
-    /chat What is the capital of Japan?
-    /draw anime robot with glowing sword
-    /draw cyberpunk city at night, pixel art
-    /draw fantasy castle under moonlight
-
-📦 Project Files
-
-    .
-    ├── bot.py             # Main bot code
-    ├── .env               # Hidden env file (add yourself)
-    ├── requirements.txt   # Python dependencies
-    └── README.md          # You're reading it!
-
-📃 requirements.txt
-
-    discord.py
-    python-dotenv
-    huggingface_hub
-    pillow
-
-Install with:
-
-    pip install -r requirements.txt
-
-📜 License
-
-This project is open-source under the MIT License.
-
-❤️ Credits
-
-- Built using discord.py
-- Powered by Hugging Face Inference API
-- Hosted on Render
-
-Need help or want to add buttons, dropdowns, or AI memory features? Message the repo maintainer or open an issue!
+📝 Notes
+- Messages over 2000 characters are trimmed automatically to avoid Discord errors.
+- <think> tags are removed from AI responses.
+- Make sure DISCORD_TOKEN has Message Content Intent enabled in the Discord Developer Portal.
