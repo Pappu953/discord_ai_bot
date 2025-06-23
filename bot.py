@@ -9,6 +9,7 @@ import re
 from flask import Flask
 from threading import Thread
 
+# ------------------ Flask Keep-Alive ------------------
 app = Flask(__name__)
 
 @app.route('/')
@@ -16,12 +17,13 @@ def home():
     return "Bot is running!"
 
 def run_flask():
-    app.run(host="0.0.0.0", port=8080)
+    port = int(os.environ.get("PORT", 8080))  # Support Render dynamic port
+    app.run(host="0.0.0.0", port=port)
 
-# Start the Flask server in a separate thread
+# Run Flask server in separate thread
 Thread(target=run_flask).start()
 
-# Load environment variables
+# ------------------ Load Environment ------------------
 load_dotenv()
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 HF_TOKEN = os.getenv("HF_TOKEN")
@@ -29,12 +31,13 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 if not DISCORD_TOKEN or not HF_TOKEN:
     raise EnvironmentError("DISCORD_TOKEN or HF_TOKEN not set in environment variables.")
 
-# Hugging Face Client
+# ------------------ Hugging Face Setup ------------------
 hf_client = InferenceClient(token=HF_TOKEN)
 
-# Discord bot setup
+# ------------------ Discord Bot Setup ------------------
 intents = discord.Intents.default()
 intents.message_content = True
+
 bot = commands.Bot(command_prefix="!", intents=intents)
 tree = bot.tree
 
@@ -47,6 +50,7 @@ async def on_ready():
     except Exception as e:
         print(f"❌ Sync failed: {e}")
 
+# ------------------ /chat Command ------------------
 @tree.command(name="chat", description="Talk with AI using Hugging Face chat model.")
 @app_commands.describe(prompt="What do you want to say?")
 async def chat_command(interaction: discord.Interaction, prompt: str):
@@ -58,18 +62,19 @@ async def chat_command(interaction: discord.Interaction, prompt: str):
         )
         message = result.choices[0].message["content"]
 
-        # Remove <think>...</think> blocks
+        # Clean <think>...</think> content
         cleaned_message = re.sub(r"<think>.*?</think>", "", message, flags=re.DOTALL).strip()
 
+        # Discord limit
         if len(cleaned_message) > 2000:
             cleaned_message = cleaned_message[:1997] + "..."
 
         await interaction.followup.send(cleaned_message)
-
     except Exception as e:
         await interaction.followup.send(f"❌ Error generating chat: {e}")
 
-@tree.command(name="draw", description="Generate image from prompt using HF")
+# ------------------ /draw Command ------------------
+@tree.command(name="draw", description="Generate image from prompt using Hugging Face")
 @app_commands.describe(prompt="Describe the image you want to generate")
 async def draw_command(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer()
@@ -92,4 +97,5 @@ async def draw_command(interaction: discord.Interaction, prompt: str):
     except Exception as e:
         await interaction.followup.send(f"❌ Error generating image: {e}")
 
+# ------------------ Run the Bot ------------------
 bot.run(DISCORD_TOKEN)
